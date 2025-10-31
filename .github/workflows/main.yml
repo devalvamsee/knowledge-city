@@ -1,9 +1,7 @@
-name: Node.js CI/CD Pipeline
+name: Node.js CI/CD
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
     branches: [ main ]
 
 jobs:
@@ -11,31 +9,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 18
 
-      - name: Check Node & NPM Versions
+      - name: Install dependencies
         run: |
-          node -v
-          npm -v
-
-      - name: Install Dependencies
-        run: npm install
+          npm install
 
       - name: Build
         run: echo "Build step complete"
 
-      - name: Run Tests
-        run: npm test || echo "No tests defined"
-
-      - name: Start App
+      - name: Start app
         run: |
           nohup node app.js > app.log 2>&1 &
           sleep 5
-          curl -s http://localhost:3000 || echo "App did not respond"
+          curl -s http://localhost:3000 || (echo "App did not respond" && exit 1)
 
+      - name: Debug logs
+        if: failure()
+        run: |
+          echo "===== APP LOG ====="
+          cat app.log || echo "No app.log found"
+          echo "==================="
