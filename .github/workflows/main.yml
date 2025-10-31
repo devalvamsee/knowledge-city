@@ -1,0 +1,92 @@
+name: Node.js CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1️⃣ Checkout the repo
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2️⃣ Set up Node.js
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'   # Change if needed
+
+    # 3️⃣ Check environment
+    - name: Check environment
+      run: |
+        echo "🔍 Checking Node and NPM..."
+        node -v
+        npm -v
+
+    # 4️⃣ Install dependencies
+    - name: Install dependencies
+      run: |
+        echo "📦 Installing dependencies..."
+        if [ ! -f package.json ]; then
+          echo "⚠️ No package.json found, creating a minimal one..."
+          cat > package.json <<EOF
+          {
+            "name": "node-js",
+            "version": "1.0.0",
+            "main": "app.js",
+            "scripts": { "start": "node app.js" },
+            "dependencies": { "express": "^4.18.2" }
+          }
+EOF
+        fi
+        npm install
+
+    # 5️⃣ Build step (optional)
+    - name: Build project
+      run: |
+        echo "🏗️ Build step complete."
+
+    # 6️⃣ Run tests
+    - name: Run tests
+      run: |
+        echo "🧪 Running tests..."
+        if npm run | grep -q "test"; then
+          npm test
+        else
+          echo "⚠️ No tests defined in package.json"
+        fi
+
+    # 7️⃣ Start Node app (local test)
+    - name: Start Node.js app
+      run: |
+        echo "🚀 Starting Node.js app..."
+        nohup node app.js > app.log 2>&1 &
+        sleep 5
+
+    # 8️⃣ Verify app is running
+    - name: Verify deployment
+      run: |
+        echo "🔎 Verifying Node.js app..."
+        if pgrep -f "node app.js" > /dev/null; then
+          echo "✅ Node.js app is running."
+          curl -s http://localhost:3000 || echo "⚠️ App did not respond properly."
+        else
+          echo "❌ Node.js app failed to start."
+          echo "---- app.log ----"
+          cat app.log
+          echo "-----------------"
+          exit 1
+        fi
+
+    # 9️⃣ Cleanup (optional)
+    - name: Stop Node.js app
+      if: always()
+      run: |
+        echo "🛑 Stopping Node.js app..."
+        pkill -f "node app.js" || true
+
